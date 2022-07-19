@@ -1,3 +1,8 @@
+import sqlite3
+import json
+from models import Location
+
+
 LOCATIONS = [
     {
         "id": 1,
@@ -14,24 +19,67 @@ LOCATIONS = [
 
 def get_all_locations():
     """this function gets all locations"""
-    return LOCATIONS
+    # Open a connection to the database
+    with sqlite3.connect("./kennel.sqlite3") as conn:
+
+        # Just use these. Its a Black Box.
+        conn.row_factory = sqlite3.Row
+        db_cursor = conn.cursor()
+        db_cursor.execute("""
+        SELECT
+            l.id,
+            l.name,
+            l.address
+        FROM location l
+        """)
+
+        # Initialize an empty list to hold all location representations
+        locations = []
+
+        # Convert rows of data into a Python list
+        dataset = db_cursor.fetchall()
+
+        # Iterate list of data returned from database
+        for row in dataset:
+
+            # Create a location instance from the current row.
+            # Note that the database fields are specified in
+            # exact order of the parameters defined in the
+            # Location class above.
+            location = Location(row['id'], row['name'], row['address'])
+
+            locations.append(location.__dict__)
+
+    # Use 'json' package to properly serialize list as JSON
+    return json.dumps(locations)
 
 # Function with a single parameter
 
 
 def get_single_location(id):
     """this function gets single locations by the id"""
-    # Variable to hold the found location, if it exists
-    requested_location = None
-    # Iterate the LOCATIONS list above. Very similar to the
-    # for...of loops you used in JavaScript.
-    for location in LOCATIONS:
-        # Dictionaries in python use [] notation to find a key
-        # instead of the dot notation that JavaScript used.
-        if location["id"] == id:
-            requested_location = location
+    with sqlite3.connect("./kennel.sqlite3") as conn:
+        conn.row_factory = sqlite3.Row
+        db_cursor = conn.cursor()
 
-    return requested_location
+        # Use a ? parameter to inject a variable's value
+        # Into the SQL statement
+        db_cursor.execute("""
+        SELECT 
+            l.id,
+            l.name,
+            l.address
+        FROM location l
+        WHERE l.id = ?
+        """, (id, ))
+
+        # Load the single result into memory
+        data = db_cursor.fetchone()
+
+        # Create a location instance from the current row
+        location = Location(data['id'], data['name'], data['address'])
+
+        return json.dumps(location.__dict__)
 
 
 def create_location(location):
